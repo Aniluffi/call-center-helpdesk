@@ -5,12 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CallCenterHelpdesk.Data.Models
+namespace CallCenterHelpdesk.IService.Models.RequestService.Response
 {
-    /// <summary>
-    /// заявка пользователя
-    /// </summary>
-    public class Request
+    public class RequestGetDateilResponse
     {
         /// <summary>
         /// номер заявки

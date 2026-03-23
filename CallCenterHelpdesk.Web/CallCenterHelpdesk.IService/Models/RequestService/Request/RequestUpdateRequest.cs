@@ -5,17 +5,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CallCenterHelpdesk.Data.Models
+namespace CallCenterHelpdesk.IService.Models.RequestService.Request
 {
-    /// <summary>
-    /// заявка пользователя
-    /// </summary>
-    public class Request
+    public class RequestUpdateRequest
     {
         /// <summary>
         /// номер заявки
         /// </summary>
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid Id { get; set; }
         /// <summary>
         /// тема
         /// </summary>

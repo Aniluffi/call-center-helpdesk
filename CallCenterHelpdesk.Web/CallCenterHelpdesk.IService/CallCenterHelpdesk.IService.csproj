@@ -10,8 +10,4 @@
     <ProjectReference Include="..\CallCenterHelpdesk.Data\CallCenterHelpdesk.Data.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Models\" />
-  </ItemGroup>
-
 </Project>

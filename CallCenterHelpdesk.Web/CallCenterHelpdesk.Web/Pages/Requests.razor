@@ -1,0 +1,340 @@
+﻿@page "/requests"
+@using Microsoft.AspNetCore.Components.Web
+@using CallCenterHelpdesk.Data.Enums
+@using CallCenterHelpdesk.Data.Models
+@using CallCenterHelpdesk.IService.Models.RequestService.Request
+@using CallCenterHelpdesk.IService.Models.RequestService.Response
+@using CallCenterHelpdesk.IService.Models.StatusService
+@using CallCenterHelpdesk.IService.Models.StatusService.Response
+@using Microsoft.JSInterop
+@inject HttpClient Http
+@inject IJSRuntime JS
+@rendermode @(new Microsoft.AspNetCore.Components.Web.InteractiveServerRenderMode())
+
+@* Включаем интерактивность для .NET 9 *@
+
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold">Система заявок Helpdesk</h2>
+        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#createModal">
+            + Создать заявку
+        </button>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body row g-3">
+            <div class="col-md-8">
+                <input type="text"
+                       class="form-control"
+                       placeholder="Поиск по теме или Email..."
+                       @bind="searchTerm"
+                       @bind:event="oninput"
+                       @onkeyup="LoadRequests" />
+            </div>
+
+            <div class="col-md-4">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Фильтр статусов (@selectedStatuses.Count)
+                    </button>
+                    <ul class="dropdown-menu p-3 w-100">
+                        @foreach (var s in availableStatuses)
+                        {
+                            // Приводим ID из базы к нашему Enum
+                            var statusEnum = (StatusRequestEnum)s.Id;
+                            <li>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox"
+                                           id="status_@s.Id"
+                                           checked="@selectedStatuses.Contains(statusEnum)"
+                                           @onchange="@(e => OnStatusCheckboxChanged(statusEnum, e.Value))" />
+                                    <label class="form-check-label" for="status_@s.Id">@s.Name</label>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive shadow-sm rounded">
+        <table class="table table-hover bg-white mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Тема</th>
+                    <th>Email</th>
+                    <th>Статус</th>
+                    <th class="text-end">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (requests == null || !requests.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="text-center py-4 text-muted">Заявок пока нет...</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var req in requests)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@req.Title</td>
+                            <td><small class="text-muted">@req.PersonContact</small></td>
+                            <td>
+                                <span class="badge @GetStatusClass(req.Status)">
+                                    @* Ищем человеческое название в списке, загруженном из контроллера *@
+                                    @(availableStatuses.FirstOrDefault(s => s.Id == (int)req.Status)?.Name ?? req.Status.ToString())
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <button class="btn btn-outline-primary btn-sm me-2"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editModal"
+                                        @onclick="() => OpenEditModal(req.Id)">
+                                    Детали
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteRequest(req.Id)">
+                                    Удалить
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="createModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title">Новая заявка</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Тема</label>
+                    <input class="form-control" @bind="newRequest.Title" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" @bind="newRequest.PersonContact" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Описание</label>
+                    <textarea class="form-control" rows="3" @bind="newRequest.Discription"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" @onclick="CreateRequest">Создать</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактирование заявки</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                @if (editingRequest != null)
+                {
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Тема</label>
+                            <input class="form-control" @bind="editingRequest.Title" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Контакт</label>
+                            <p class="form-control-plaintext border rounded ps-2">@editingRequest.PersonContact</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Статус</label>
+                            <select class="form-select" @bind="editingRequest.Status">
+                                @foreach (StatusRequestEnum status in Enum.GetValues(typeof(StatusRequestEnum)))
+                                {
+                                    <option value="@status">@status</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Описание</label>
+                            <textarea class="form-control" rows="4" @bind="editingRequest.Discription"></textarea>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center p-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p>Загрузка данных...</p>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-success" @onclick="UpdateServiceRequest">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Request> requests = new();
+    private List<StatusGetListItem> availableStatuses = new();
+    private string searchTerm = "";
+    private int? selectedStatus = null;
+
+    private RequestCreateRequest newRequest = new();
+    private Request editingRequest = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatuses();
+        await LoadRequests();
+    }
+
+    private async Task LoadStatuses()
+    {
+        try
+        {
+            var res = await Http.GetFromJsonAsync<StatusGetListResponse>("api/status/list");
+            availableStatuses = res?.Items ?? new();
+        }
+        catch (Exception ex) { Console.WriteLine($"Ошибка статусов: {ex.Message}"); }
+    }
+
+    // Вместо одиночного int? используем список
+    private List<StatusRequestEnum> selectedStatuses = new();
+
+    private async Task OnStatusCheckboxChanged(StatusRequestEnum status, object checkedValue)
+    {
+        if ((bool)checkedValue)
+        {
+            if (!selectedStatuses.Contains(status)) selectedStatuses.Add(status);
+        }
+        else
+        {
+            selectedStatuses.Remove(status);
+        }
+        await LoadRequests();
+    }
+
+    private async Task LoadRequests()
+    {
+        // Базовый URL
+        var builder = new System.Text.StringBuilder($"api/request/list?Search={searchTerm}");
+
+        // Добавляем каждый выбранный статус как отдельный параметр Statuses
+        // Итоговый URL будет: api/request/list?Search=...&Statuses=0&Statuses=1
+        foreach (var status in selectedStatuses)
+        {
+            builder.Append($"&Statuses={(int)status}");
+        }
+
+        try
+        {
+            var res = await Http.GetFromJsonAsync<RequestGetListResponse>(builder.ToString());
+            requests = res?.Requests ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка загрузки: {ex.Message}");
+        }
+    }
+
+    private async Task OnStatusFilterChanged(ChangeEventArgs e)
+    {
+        selectedStatus = int.TryParse(e.Value?.ToString(), out var val) ? val : null;
+        await LoadRequests();
+    }
+
+    private async Task CreateRequest()
+    {
+        if (string.IsNullOrWhiteSpace(newRequest.Title)) return;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/request/create", newRequest);
+            if (response.IsSuccessStatusCode)
+            {
+                newRequest = new();
+                await LoadRequests();
+                await JS.InvokeVoidAsync("closeModal", "createModal");
+            }
+        }
+        catch (Exception ex) { Console.WriteLine($"Ошибка создания: {ex.Message}"); }
+    }
+
+    private async Task OpenEditModal(Guid id)
+    {
+        editingRequest = null;
+        try
+        {
+            // Вызов метода GetDetail контроллера
+            var res = await Http.GetFromJsonAsync<Request>($"api/request/detail/{id}");
+            if (res != null) editingRequest = res;
+        }
+        catch (Exception ex) { Console.WriteLine($"Ошибка деталей: {ex.Message}"); }
+    }
+
+    private async Task UpdateServiceRequest()
+    {
+        if (editingRequest == null) return;
+
+        try
+        {
+            // Создаем строго типизированную модель
+            var updateModel = new RequestUpdateRequest
+                {
+                    Id = editingRequest.Id,
+                    Title = editingRequest.Title,
+                    Status = editingRequest.Status,
+                    Discription = editingRequest.Discription,
+                    PersonContact = editingRequest.PersonContact
+                    // Если в классе RequestUpdateRequest есть поле Type или PersonEmail —
+                    // их ТОЖЕ нужно здесь заполнить, иначе сервер вернет 400
+                };
+
+            var response = await Http.PutAsJsonAsync("api/request/update", updateModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadRequests();
+                await JS.InvokeVoidAsync("closeModal", "editModal");
+                StateHasChanged();
+            }
+            else
+            {
+                // Это выведет в консоль подробную причину ошибки 400
+                var errorJson = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Ошибка 400 от сервера: {errorJson}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка при обновлении: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteRequest(Guid id)
+    {
+        var res = await Http.DeleteAsync($"api/request/delete/{id}");
+        if (res.IsSuccessStatusCode) await LoadRequests();
+    }
+
+    private string GetStatusClass(StatusRequestEnum status) => (int)status switch
+    {
+        0 => "bg-primary-subtle text-primary",           // Новый (New)
+        1 => "bg-warning-subtle text-warning-emphasis",  // В работе (InProgress)
+        2 => "bg-success-subtle text-success",           // Решен (Resolved)
+        3 => "bg-danger-subtle text-danger",             // Отменен (Cansel)
+        _ => "bg-secondary-subtle text-secondary"
+    };
+}

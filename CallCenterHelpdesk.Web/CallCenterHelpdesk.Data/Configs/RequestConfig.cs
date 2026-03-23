@@ -14,11 +14,6 @@ namespace CallCenterHelpdesk.Data.Configs
         public void Configure(EntityTypeBuilder<Request> builder)
         {
             builder.HasKey(c => c.Id);
-
-            builder.HasOne(c => c.User)
-                .WithMany(c => c.Requests)
-                .HasForeignKey(c => c.UserId)
-                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }
