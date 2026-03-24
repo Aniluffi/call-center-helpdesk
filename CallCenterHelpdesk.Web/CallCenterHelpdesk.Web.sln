@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.12.35707.178 d17.12
+VisualStudioVersion = 17.12.35707.178
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CallCenterHelpdesk.Web", "CallCenterHelpdesk.Web\CallCenterHelpdesk.Web.csproj", "{CF55353D-5FA2-44F3-99B2-78B52330DF74}"
 EndProject
@@ -10,6 +10,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CallCenterHelpdesk.IService", "CallCenterHelpdesk.IService\CallCenterHelpdesk.IService.csproj", "{97FEE1C2-33A7-42AA-A22C-E24E8F9086AE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CallCenterHelpdesk.Service", "CallCenterHelpdesk.Service\CallCenterHelpdesk.Service.csproj", "{2830F596-6182-4519-B35C-A99FBAA756A8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CallCenterHelpdesk.Test", "CallCenterHelpdesk.Test\CallCenterHelpdesk.Test.csproj", "{A390AB4A-0607-48B6-A765-798D3436FEEF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{2830F596-6182-4519-B35C-A99FBAA756A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2830F596-6182-4519-B35C-A99FBAA756A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2830F596-6182-4519-B35C-A99FBAA756A8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A390AB4A-0607-48B6-A765-798D3436FEEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A390AB4A-0607-48B6-A765-798D3436FEEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A390AB4A-0607-48B6-A765-798D3436FEEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A390AB4A-0607-48B6-A765-798D3436FEEF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
